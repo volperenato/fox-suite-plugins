@@ -1,3 +1,6 @@
 [submodule "fox-suite-core"]
 	path = fox-suite-core
 	url = https://github.com/volperenato/fox-suite-core
+[submodule "vstsdk2.4"]
+	path = vstsdk2.4
+	url = https://github.com/volperenato/vstsdk2.4
