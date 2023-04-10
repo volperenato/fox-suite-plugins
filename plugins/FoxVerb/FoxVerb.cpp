@@ -1,11 +1,11 @@
 //-------------------------------------------------------------------------------------------------------
-//  MisEfx.cpp
+//  FoxVerb.cpp
 //  Reverb plugin based on the Freeverb scheme
-//  Customized by Renato Volpe on 07/02/2022.
+//  Finalized by Renato Volpe on 22/05/2022.
 //
 //-------------------------------------------------------------------------------------------------------
 
-#include "MisEfx.h"
+#include "FoxVerb.h"
 #define _USE_MATH_DEFINES
 #include <stdlib.h>
 #include <math.h>
@@ -15,7 +15,6 @@
 #define MAX_PREDELAY_VALUE_IN_MS 300.0
 #define MAX_AP_FILTER_LENGTH_IN_MS 50.0
 #define MAX_REVERB_DECAY_IN_SECONDS 5.0
-#define MAX_SMEARING_VALUE 0.97
 #define MIN_MOD_RATE_IN_HZ 0.1
 #define MAX_MOD_RATE_IN_HZ 10.0
 //#define MIN_COMB_FILTER_DELAY_IN_MS 31.1
@@ -29,7 +28,7 @@
 
 /*--------------------------------------------------------------------*/
 // Reverb class constructor
-MisEfx::MisEfx(audioMasterCallback audioMaster)
+FoxVerb::FoxVerb(audioMasterCallback audioMaster)
     : AudioEffectX(audioMaster, NUM_PRESETS, Param_Count) // n program, n parameters
 {
     setNumInputs(2);		// stereo in
@@ -42,93 +41,25 @@ MisEfx::MisEfx(audioMasterCallback audioMaster)
 /*--------------------------------------------------------------------*/
 AudioEffect* createEffectInstance(audioMasterCallback audioMaster)
 {
-    return new MisEfx(audioMaster);
+    return new FoxVerb(audioMaster);
 }
 /*--------------------------------------------------------------------*/
 
 /*--------------------------------------------------------------------*/
 // Initialize all the objects and parameters
-void MisEfx::InitPlugin()
+void FoxVerb::InitPlugin()
 {
     /*.......................................*/
     // initialize reverb plug-in parameters
     InitPresets();
-    updateReverbParameters();
 
     // get current sample rate
     int currSampleRate = getSampleRate();
 
     /*.......................................*/
-    // init pre-delay
-
-    preDelayModule = new CombFilter();
-    preDelayModule->init(MAX_PREDELAY_VALUE_IN_MS, currSampleRate);
-    preDelayModule->setDelayInmsec(rev_preDelay);
-    preDelayModule->setFeedback(0.0);
-
-    /*.......................................*/
-    // allocate comb filters
-    combFiltersL = new LPCombFilter[NUM_COMB_FILTERS];
-    combFiltersR = new LPCombFilter[NUM_COMB_FILTERS];
-
-    // init comb filters
-    float dampingFrequency = mapValueIntoRange(1.0 - rev_damping, MIN_LPF_FREQUENCY, MAX_LPF_FREQUENCY);
-
-    for (int i = 0; i < NUM_COMB_FILTERS; i++) {
-        combFiltersL[i].init(MAX_COMB_FILTER_LENGTH_IN_MS, currSampleRate);
-        combFiltersL[i].setFeedbackFromDecay(rev_decay);
-        combFiltersL[i].setCutoffFrequency(dampingFrequency);
-        combFiltersL[i].setMakeUpGaindB(-12.0);
-
-        combFiltersR[i].init(MAX_COMB_FILTER_LENGTH_IN_MS, currSampleRate);
-        combFiltersR[i].setFeedbackFromDecay(rev_decay);
-        combFiltersR[i].setCutoffFrequency(dampingFrequency);
-        combFiltersR[i].setMakeUpGaindB(-12.0);
-
-        // set a negative feedback for comb filters successive to first
-        if (i > 0) {
-            combFiltersL[i].setFeedbackToNegative();
-            combFiltersR[i].setFeedbackToNegative();
-        }
-    }
-
-    // set comb filters delays
-    setCombFiltersDelay();
-
-    /*.......................................*/
-    // allocate all pass lines
-    apFiltersL_input = new AllPassFilter[NUM_ALLPASS_FILTERS_IN];
-    apFiltersR_input = new AllPassFilter[NUM_ALLPASS_FILTERS_IN];
-    apFiltersL_output = new AllPassFilter[NUM_ALLPASS_FILTERS_OUT];
-    apFiltersR_output = new AllPassFilter[NUM_ALLPASS_FILTERS_OUT];
-
-    // init all pass lines      
-    for (int i = 0; i < NUM_ALLPASS_FILTERS_IN; i++) {
-        apFiltersL_input[i].init(MAX_AP_FILTER_LENGTH_IN_MS, currSampleRate);
-        apFiltersL_input[i].setFeedback(rev_smearing);
-        //apFiltersL_input[i].setModDepth(rev_modDepth);
-        //apFiltersL_input[i].setMakeUpGaindB(-6.0);
-
-        apFiltersR_input[i].init(MAX_AP_FILTER_LENGTH_IN_MS, currSampleRate);
-        apFiltersR_input[i].setFeedback(rev_smearing);
-        //apFiltersR_input[i].setModDepth(rev_modDepth);
-        //apFiltersR_input[i].setMakeUpGaindB(-6.0);
-    }
-
-    for (int i = 0; i < NUM_ALLPASS_FILTERS_OUT; i++) {
-        apFiltersL_output[i].init(MAX_AP_FILTER_LENGTH_IN_MS, currSampleRate);
-        apFiltersL_output[i].setFeedback(rev_smearing);
-        //apFiltersL_output[i].setModDepth(rev_modDepth);
-        //apFiltersL_output[i].setMakeUpGaindB(-6.0);
-
-        apFiltersR_output[i].init(MAX_AP_FILTER_LENGTH_IN_MS, currSampleRate);
-        apFiltersR_output[i].setFeedback(rev_smearing);
-        //apFiltersR_output[i].setModDepth(rev_modDepth);     
-        //apFiltersR_output[i].setMakeUpGaindB(-6.0);
-    }
-
-    // set all pass filters delays
-    setAllPassFiltersDelay();
+    // init Reverb
+    Reverb = new Freeverb();
+    Reverb->init(currSampleRate, rev_wet, rev_decay, rev_damping, rev_smearing, rev_spread, rev_preDelay);
 
     /*.......................................*/
     // init Output LPF filter
@@ -152,36 +83,19 @@ void MisEfx::InitPlugin()
     // init tremolo
     tremolo = new Tremolo;
     modWaveform = OscillatorType::Sine;
-    tremolo->init(currSampleRate, modWaveform, rev_modRate, rev_modDepth);    
+    tremolo->init(currSampleRate, modWaveform, rev_modRate, rev_modDepth);
 }
 /*--------------------------------------------------------------------*/
 
 /*--------------------------------------------------------------------*/
 // replace the "setSampleRate" method with user-defined one
-void MisEfx::setSampleRate(float sampleRate)
+void FoxVerb::setSampleRate(float sampleRate)
 {
     // Call AudioEffect "setSampleRate" method
     AudioEffect::setSampleRate(sampleRate);
 
-    // Call setSampleRate methods on all needed delay lines
-    preDelayModule->setSampleRate(sampleRate);
-
-    for (int i = 0; i < NUM_COMB_FILTERS; i++) {
-        combFiltersL[i].setSampleRate(sampleRate);
-        combFiltersR[i].setSampleRate(sampleRate);
-    }
-
-    for (int i = 0; i < NUM_ALLPASS_FILTERS_IN; i++) {
-        apFiltersL_input[i].setSampleRate(sampleRate);
-        apFiltersR_input[i].setSampleRate(sampleRate);
-    }
-
-    for (int i = 0; i < NUM_ALLPASS_FILTERS_OUT; i++) {
-        apFiltersL_output[i].setSampleRate(sampleRate);
-        apFiltersR_output[i].setSampleRate(sampleRate);
-    }
-
-    //chorus->setSampleRate(sampleRate);
+    // Call setSampleRate on every needed module
+    Reverb->setSampleRate(sampleRate);
     tremolo->setSampleRate(sampleRate);
     outputLPF->setSampleRate(sampleRate);
     outputHPF->setSampleRate(sampleRate);
@@ -189,90 +103,8 @@ void MisEfx::setSampleRate(float sampleRate)
 /*--------------------------------------------------------------------*/
 
 /*--------------------------------------------------------------------*/
-// Convert a value from interval [minValue, maxValue] to [0,1]
-float MisEfx::mapValueIntoRange(float value, float minvalue, float maxValue)
-{
-    return minvalue + value * (maxValue - minvalue);
-}
-/*--------------------------------------------------------------------*/
-
-/*--------------------------------------------------------------------*/
-// Convert a value from interval [0,1] to [minValue, maxValue]
-float MisEfx::mapValueOutsideRange(float value, float minValue, float maxValue)
-{
-    return (value - minValue) / (maxValue - minValue);
-}
-/*--------------------------------------------------------------------*/
-
-/*--------------------------------------------------------------------*/
-// set Left and Right All Pass Filters delay lengths in milliseconds
-void MisEfx::setCombFiltersDelay()
-{
-    combFilterDlymsLeft[0] = 25.31; // 29.7;
-    combFilterDlymsLeft[1] = 26.94; // 37.1;
-    combFilterDlymsLeft[2] = 28.96; // 41.1;
-    combFilterDlymsLeft[3] = 30.75; // 43.7;
-    combFilterDlymsLeft[4] = 32.24; // 31.3;
-    combFilterDlymsLeft[5] = 33.81; // 31.7;
-    combFilterDlymsLeft[6] = 35.31; // 37.7;
-    combFilterDlymsLeft[7] = 36.70; // 41.7;
-
-    //float delay_tmp;
-    for (int i = 0; i < NUM_COMB_FILTERS; i++) {
-        //delay_tmp = MIN_COMB_FILTER_DELAY_IN_MS + (MAX_COMB_FILTER_DELAY_IN_MS - MIN_COMB_FILTER_DELAY_IN_MS) * (float)i * (float)i / ((float)NUM_COMB_FILTERS * (float)NUM_COMB_FILTERS);
-        //delay_tmp = MIN_COMB_FILTER_DELAY_IN_MS + log10((float)i * (MAX_COMB_FILTER_DELAY_IN_MS - MIN_COMB_FILTER_DELAY_IN_MS) / (float)NUM_COMB_FILTERS);
-        //combFilterDlymsLeft[i] = delay_tmp;// -rev_spread * STEREO_SPREAD_COEFFICIENT_COMB_IN_MS / 2.0;
-        //combFilterDlymsRight[i] = delay_tmp + rev_spread * STEREO_SPREAD_COEFFICIENT_COMB_IN_MS / 2.0;        
-        //combFilterDlymsLeft[i] = delay_tmp - rev_spread * STEREO_SPREAD_COEFFICIENT_COMB_IN_MS / 2.0;
-        combFilterDlymsRight[i] = combFilterDlymsLeft[i] + STEREO_SPREAD_COEFFICIENT_IN_MS;
-        combFiltersL[i].setDelayInmsec(combFilterDlymsLeft[i]);
-        combFiltersR[i].setDelayInmsec(combFilterDlymsRight[i]);
-    }
-}
-/*--------------------------------------------------------------------*/
-
-/*--------------------------------------------------------------------*/
-// set Left and Right All Pass Filters delay lengths in milliseconds
-void MisEfx::setAllPassFiltersDelay()
-{
-    allPassDlymsLeft_input[0] = 1.1;
-    allPassDlymsLeft_input[1] = 2.3;
-    allPassDlymsLeft_input[2] = 4.7;
-
-    allPassDlymsLeft_output[0] = 7.73; // 1.1;
-    allPassDlymsLeft_output[1] = 10.00; // 2.3;
-    allPassDlymsLeft_output[2] = 12.61; // 4.7;
-
-    //float delay_tmp;
-    for (int i = 0; i < NUM_ALLPASS_FILTERS_IN; i++) {
-        //delay_tmp = MIN_AP_FILTER_DELAY_IN_MS + (MAX_AP_FILTER_DELAY_IN_MS - MIN_AP_FILTER_DELAY_IN_MS) * (float)i * (float)i / ( (float)NUM_ALLPASS_FILTERS_IN * (float)NUM_ALLPASS_FILTERS_IN );
-        //delay_tmp = mapValueIntoRange(log((float)i / (float)NUM_ALLPASS_FILTERS_IN), log(MIN_AP_FILTER_DELAY_IN_MS), log(MAX_AP_FILTER_DELAY_IN_MS));
-        //allPassDlymsLeft_input[i] = delay_tmp - rev_spread * STEREO_SPREAD_COEFFICIENT_APF_IN_MS / 2.0;
-        //allPassDlymsRight_input[i] = delay_tmp + rev_spread * STEREO_SPREAD_COEFFICIENT_APF_IN_MS / 2.0;
-        //allPassDlymsLeft_input[i]  = delay_tmp;
-        //allPassDlymsRight_input[i] = delay_tmp;
-        allPassDlymsRight_input[i] = allPassDlymsLeft_input[i] + STEREO_SPREAD_COEFFICIENT_IN_MS;
-        apFiltersL_input[i].setDelayInmsec(allPassDlymsLeft_input[i]);
-        apFiltersR_input[i].setDelayInmsec(allPassDlymsRight_input[i]);
-    }
-
-    for (int i = 0; i < NUM_ALLPASS_FILTERS_OUT; i++) {
-        //delay_tmp = MIN_AP_FILTER_DELAY_IN_MS + (MAX_AP_FILTER_DELAY_IN_MS - MIN_AP_FILTER_DELAY_IN_MS) * (float)i * (float)i / ((float)NUM_ALLPASS_FILTERS_OUT * (float)NUM_ALLPASS_FILTERS_OUT);
-        //delay_tmp = mapValueIntoRange(log((float)i / (float)NUM_ALLPASS_FILTERS_OUT), log(MIN_AP_FILTER_DELAY_IN_MS), log(MAX_AP_FILTER_DELAY_IN_MS));
-        //allPassDlymsRight_output[i] = delay_tmp - rev_spread * STEREO_SPREAD_COEFFICIENT_APF_IN_MS / 2.0;
-        //allPassDlymsLeft_output[i] = delay_tmp + rev_spread * STEREO_SPREAD_COEFFICIENT_APF_IN_MS / 2.0;
-        //allPassDlymsRight_output[i] = delay_tmp;
-        //allPassDlymsLeft_output[i] = delay_tmp;
-        allPassDlymsRight_output[i] = allPassDlymsLeft_output[i] + STEREO_SPREAD_COEFFICIENT_IN_MS;
-        apFiltersL_output[i].setDelayInmsec(allPassDlymsLeft_output[i]);
-        apFiltersR_output[i].setDelayInmsec(allPassDlymsRight_output[i]);
-    }
-}
-/*--------------------------------------------------------------------*/
-
-/*--------------------------------------------------------------------*/
 // Define presets parameters values
-void MisEfx::InitPresets()
+void FoxVerb::InitPresets()
 {
     rev_presets = new ReverbPresets[NUM_PRESETS];
 
@@ -349,34 +181,24 @@ void MisEfx::InitPresets()
     // Set the program when creating a new plugin instance
     int initIdx = 0;
     AudioEffect::setProgram(initIdx);
-    rev_wet         = rev_presets[initIdx].rev_wet;
-    rev_decay       = rev_presets[initIdx].rev_decay;
-    rev_smearing    = rev_presets[initIdx].rev_smearing;
-    rev_damping     = rev_presets[initIdx].rev_damping;
-    rev_lpfFreq     = rev_presets[initIdx].rev_lpfFreq;
-    rev_hpfFreq     = rev_presets[initIdx].rev_hpfFreq;
-    rev_preDelay    = rev_presets[initIdx].rev_preDelay;
-    rev_modRate     = rev_presets[initIdx].rev_modRate;
-    rev_modDepth    = rev_presets[initIdx].rev_modDepth;
-    rev_spread      = rev_presets[initIdx].rev_spread;
+    rev_wet = rev_presets[initIdx].rev_wet;
+    rev_decay = rev_presets[initIdx].rev_decay;
+    rev_smearing = rev_presets[initIdx].rev_smearing;
+    rev_damping = rev_presets[initIdx].rev_damping;
+    rev_lpfFreq = rev_presets[initIdx].rev_lpfFreq;
+    rev_hpfFreq = rev_presets[initIdx].rev_hpfFreq;
+    rev_preDelay = rev_presets[initIdx].rev_preDelay;
+    rev_modRate = rev_presets[initIdx].rev_modRate;
+    rev_modDepth = rev_presets[initIdx].rev_modDepth;
+    rev_spread = rev_presets[initIdx].rev_spread;
 
-}
-/*--------------------------------------------------------------------*/
-
-/*--------------------------------------------------------------------*/
-// Update Left and Right wet coefficients when rev_wet or rev_spread change
-void MisEfx::updateReverbParameters() {
-    float width = mapValueIntoRange(rev_spread, -1.0, 1.0);
-    wet1 = rev_wet * (width / 2.0 + 0.5);
-    wet2 = rev_wet * (1 - width) / 2.0;
-    dry = (1.0 - rev_wet);
 }
 /*--------------------------------------------------------------------*/
 
 /* ------------------------------------------------------------------------------------------------------------
   -------------------------------------  PROCESS REPLACING  ---------------------------------------------------
   ------------------------------------------------------------------------------------------------------------ */
-void MisEfx::processReplacing(float** inputs, float** outputs, VstInt32 sampleFrames)
+void FoxVerb::processReplacing(float** inputs, float** outputs, VstInt32 sampleFrames)
 {
     // Extract input and output buffers
     float* inL = inputs[0]; // buffer input left
@@ -388,38 +210,16 @@ void MisEfx::processReplacing(float** inputs, float** outputs, VstInt32 sampleFr
     // Cycle over the sample frames number
     for (int i = 0; i < sampleFrames; i++) {
 
-        // Init output values
-        float outputL = 0;
-        float outputR = 0;
+        // Create arrays for Reverb processing
+        float rev_inputs[2] = { inL[i],  inR[i] };
+        float rev_outputs[2] = { 0.0, 0.0 };
 
-        // Init input values
-        float inputL = 0;
-        float inputR = 0;
+        // Process Reverb
+        Reverb->processAudio(rev_inputs, rev_outputs);
 
-        // Compute mono input from Left and Right inputs
-        float input_mono = (inL[i] + inR[i]) / 2.0;
-
-        // Pre-delay processing 
-        inputL = preDelayModule->processAudio(input_mono);
-        inputR = preDelayModule->processAudio(input_mono);
-
-        // Input AllPass Filters series processing
-        for (int j = 0; j < NUM_ALLPASS_FILTERS_IN; j++) {
-            inputL = apFiltersL_input[j].processAudio(inputL);
-            inputR = apFiltersR_input[j].processAudio(inputR);
-        }
-
-        // Comb Filters parallel processing
-        for (int j = 0; j < NUM_COMB_FILTERS; j++) {
-            outputL += combFiltersL[j].processAudio(inputL);
-            outputR += combFiltersR[j].processAudio(inputR);
-        }
-
-        // Output AllPass Filters series processing
-        for (int j = 0; j < NUM_ALLPASS_FILTERS_OUT; j++) {
-            outputL = apFiltersL_output[j].processAudio(outputL);
-            outputR = apFiltersR_output[j].processAudio(outputR);
-        }
+        // Unpack output array
+        float outputL = rev_outputs[0];
+        float outputR = rev_outputs[1];
 
         // Chorus 
         //outputL = chorus->processAudio(outputL);
@@ -438,58 +238,58 @@ void MisEfx::processReplacing(float** inputs, float** outputs, VstInt32 sampleFr
         outputR = tremolo->processAudio(outputR);
 
         // Stereo spread processing + output allocation
-        outL[i] = wet1 * outputL + wet2 * outputR + dry * inL[i];
-        outR[i] = wet1 * outputR + wet2 * outputL + dry * inR[i];
+        outL[i] = outputL;
+        outR[i] = outputR;
     }
 }
 /*--------------------------------------------------------------------*/
 
+/*--------------------------------------------------------------------*/
+// Convert a value from interval [minValue, maxValue] to [0,1]
+float FoxVerb::mapValueIntoRange(float value, float minvalue, float maxValue)
+{
+    return minvalue + value * (maxValue - minvalue);
+}
+/*--------------------------------------------------------------------*/
+
+/*--------------------------------------------------------------------*/
+// Convert a value from interval [0,1] to [minValue, maxValue]
+float FoxVerb::mapValueOutsideRange(float value, float minValue, float maxValue)
+{
+    return (value - minValue) / (maxValue - minValue);
+}
+/*--------------------------------------------------------------------*/
 
 /* ------------------------------------------------------------------------------------------------------------
   ------------------------------------------  PARAMETERS  ------------------------------------------------------
   ------------------------------------------------------------------------------------------------------------ */
   // set reverb parameters values
-void MisEfx::setParameter(VstInt32 index, float value)
+void FoxVerb::setParameter(VstInt32 index, float value)
 {
     switch (index) {
     case Param_wet:
     {
         rev_wet = value;
-        updateReverbParameters();
+        Reverb->setReverbWet(rev_wet);
         break;
     }
     case Param_decay:
     {
         rev_decay = value * MAX_REVERB_DECAY_IN_SECONDS;
-        for (int i = 0; i < NUM_COMB_FILTERS; i++) {
-            combFiltersL[i].setFeedbackFromDecay(rev_decay);
-            combFiltersR[i].setFeedbackFromDecay(rev_decay);
-        }
+        Reverb->setReverbDecayInSeconds(rev_decay);
         break;
     }
     case Param_smearing:
     {
-        rev_smearing = value * MAX_SMEARING_VALUE;
-        for (int i = 0; i < NUM_ALLPASS_FILTERS_IN; i++) {
-            apFiltersL_input[i].setFeedback(rev_smearing);
-            apFiltersR_input[i].setFeedback(rev_smearing);
-        }
-
-        for (int i = 0; i < NUM_ALLPASS_FILTERS_OUT; i++) {
-            apFiltersL_output[i].setFeedback(rev_smearing);
-            apFiltersR_output[i].setFeedback(rev_smearing);
-        }
-
+        rev_smearing = value;
+        Reverb->setReverbSmearing(rev_smearing);
         break;
     }
     case Param_damping:
     {
         rev_damping = value;
         float dampingFrequency = mapValueIntoRange(1.0 - rev_damping, MIN_LPF_FREQUENCY, MAX_LPF_FREQUENCY);
-        for (int i = 0; i < NUM_COMB_FILTERS; i++) {
-            combFiltersL[i].setCutoffFrequency(dampingFrequency);
-            combFiltersR[i].setCutoffFrequency(dampingFrequency);
-        }
+        Reverb->setReverbDampingFrequency(dampingFrequency);
         break;
     }
     case Param_lpfFreq:
@@ -507,7 +307,7 @@ void MisEfx::setParameter(VstInt32 index, float value)
     case Param_preDelay:
     {
         rev_preDelay = value * MAX_PREDELAY_VALUE_IN_MS;
-        preDelayModule->setDelayInmsec(rev_preDelay);
+        Reverb->setReverbPreDelayInMilliseconds(rev_preDelay);
         break;
     }
     case Param_ModRate:
@@ -543,7 +343,7 @@ void MisEfx::setParameter(VstInt32 index, float value)
     case Param_spread:
     {
         rev_spread = value;
-        updateReverbParameters();
+        Reverb->setReverbSpread(rev_spread);
         break;
     }
     default:
@@ -554,7 +354,7 @@ void MisEfx::setParameter(VstInt32 index, float value)
 
 /*--------------------------------------------------------------------*/
 // return reverb parameters values
-float MisEfx::getParameter(VstInt32 index)
+float FoxVerb::getParameter(VstInt32 index)
 {
     float param = 0;
     switch (index) {
@@ -570,7 +370,7 @@ float MisEfx::getParameter(VstInt32 index)
     }
     case Param_smearing:
     {
-        param = rev_smearing / MAX_SMEARING_VALUE;
+        param = rev_smearing;
         break;
     }
     case Param_damping:
@@ -617,7 +417,7 @@ float MisEfx::getParameter(VstInt32 index)
 
 /*--------------------------------------------------------------------*/
 // return reverb parameters labels
-void MisEfx::getParameterLabel(VstInt32 index, char* label)
+void FoxVerb::getParameterLabel(VstInt32 index, char* label)
 {
     switch (index) {
     case Param_wet:
@@ -657,7 +457,7 @@ void MisEfx::getParameterLabel(VstInt32 index, char* label)
 
 /*--------------------------------------------------------------------*/
 // return reverb parameters values for displaying purposes
-void MisEfx::getParameterDisplay(VstInt32 index, char* text)
+void FoxVerb::getParameterDisplay(VstInt32 index, char* text)
 {
     switch (index) {
     case Param_wet:
@@ -698,7 +498,7 @@ void MisEfx::getParameterDisplay(VstInt32 index, char* text)
 
 /*--------------------------------------------------------------------*/
 // return the parameter's name for displaying purpose
-void MisEfx::getParameterName(VstInt32 index, char* text)
+void FoxVerb::getParameterName(VstInt32 index, char* text)
 {
     switch (index) {
     case Param_wet:
@@ -741,7 +541,7 @@ void MisEfx::getParameterName(VstInt32 index, char* text)
 /* ------------------------------------------------------------------------------------------------------------
  -------------------------------------------  PROGRAM  --------------------------------------------------------
  ------------------------------------------------------------------------------------------------------------ */
-void MisEfx::setProgram(VstInt32 program)
+void FoxVerb::setProgram(VstInt32 program)
 {
     // Call the current implementation of "setProgram"
     AudioEffect::setProgram(program);
@@ -753,7 +553,7 @@ void MisEfx::setProgram(VstInt32 program)
     setParameter(Param_wet, cp->rev_wet);
     setParameter(Param_decay, cp->rev_decay / MAX_REVERB_DECAY_IN_SECONDS);
     setParameter(Param_damping, cp->rev_damping);
-    setParameter(Param_smearing, cp->rev_smearing / MAX_SMEARING_VALUE);
+    setParameter(Param_smearing, cp->rev_smearing);
     setParameter(Param_spread, cp->rev_spread);
     setParameter(Param_ModDepth, cp->rev_modDepth);
     setParameter(Param_preDelay, cp->rev_preDelay / MAX_PREDELAY_VALUE_IN_MS);
@@ -765,7 +565,7 @@ void MisEfx::setProgram(VstInt32 program)
 
 /*--------------------------------------------------------------------*/
 // return program's current name
-void MisEfx::getProgramName(char* name)
+void FoxVerb::getProgramName(char* name)
 {
     strcpy(name, rev_presets[curProgram].name);
 }
@@ -773,7 +573,7 @@ void MisEfx::getProgramName(char* name)
 
 /*--------------------------------------------------------------------*/
 // get the program's list
-bool MisEfx::getProgramNameIndexed(VstInt32 category, VstInt32 index, char* text)
+bool FoxVerb::getProgramNameIndexed(VstInt32 category, VstInt32 index, char* text)
 {
     if (index < NUM_PRESETS)
     {
@@ -790,7 +590,7 @@ bool MisEfx::getProgramNameIndexed(VstInt32 category, VstInt32 index, char* text
  ------------------------------------------------------------------------------------------------------------ */
 
  /*--------------------------------------------------------------------*/
-bool MisEfx::getEffectName(char* name)
+bool FoxVerb::getEffectName(char* name)
 {
     vst_strncpy(name, "Reverb", kVstMaxEffectNameLen);
     return true;
@@ -798,7 +598,7 @@ bool MisEfx::getEffectName(char* name)
 /*--------------------------------------------------------------------*/
 
 /*--------------------------------------------------------------------*/
-bool MisEfx::getVendorString(char* name)
+bool FoxVerb::getVendorString(char* name)
 {
     vst_strncpy(name, "Fox Suite", kVstMaxVendorStrLen);
     return true;
@@ -808,27 +608,10 @@ bool MisEfx::getVendorString(char* name)
 /* ------------------------------------------------------------------------------------------------------------
  ------------------------------------------  DESTRUCTOR  ------------------------------------------------------
  ------------------------------------------------------------------------------------------------------------ */
-MisEfx::~MisEfx()
+FoxVerb::~FoxVerb()
 {
-    //FreeCombBuffers
-    for (int i = 0; i < NUM_COMB_FILTERS; i++) {
-        combFiltersL[i].~LPCombFilter();
-        combFiltersR[i].~LPCombFilter();
-    }
-
-    // Free AllPass buffers
-    for (int i = 0; i < NUM_ALLPASS_FILTERS_IN; i++) {
-        apFiltersL_input[i].~AllPassFilter();
-        apFiltersR_input[i].~AllPassFilter();
-    }
-
-    for (int i = 0; i < NUM_ALLPASS_FILTERS_OUT; i++) {
-        apFiltersL_output[i].~AllPassFilter();
-        apFiltersR_output[i].~AllPassFilter();
-    }
-
-    // destroy pre-delay
-    preDelayModule->~CombFilter();
+    //Free Reverb
+    Reverb->~Freeverb();
 
     // destroy chorus
     //chorus->~ModDelay();

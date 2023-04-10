@@ -1,25 +1,23 @@
 //-------------------------------------------------------------------------------------------------------
-//  MisEfx.h
+//  FoxVerb.h
 //  Reverb plugin based on the Freeverb scheme
-//  Customized by Renato Volpe on 07/02/2022.
+//  Finalized by Renato Volpe on 22/05/2022.
 //
 //-------------------------------------------------------------------------------------------------------
 
 #pragma once
 #include <stdio.h>
-#include "AllPassFilter.h"
-#include "Delay.h"
-#include "LPCombFilter.h"
-#include "ModDelay.h"
+#include <stdio.h>
 #include "HPFButterworth.h"
 #include "Tremolo.h"
-#include "public.sdk/source/vst2.x/audioeffectx.h"
+#include "Freeverb.h"
+#include "../vstsdk2.4/public.sdk/source/vst2.x/audioeffectx.h"
 #include <math.h>
 
 #define NUM_COMB_FILTERS 8
 #define NUM_ALLPASS_FILTERS_IN 3
 #define NUM_ALLPASS_FILTERS_OUT 2
-#define MAX_LPF_FREQUENCY 20000.0
+#define MAX_LPF_FREQUENCY 19000.0
 #define MIN_LPF_FREQUENCY 20.0
 #define MAX_HPF_FREQUENCY 17000.0
 #define MIN_HPF_FREQUENCY 10.0
@@ -42,11 +40,11 @@ enum EfxParameter {
 };
 
 // Declare class Reverb
-class MisEfx;
+class FoxVerb;
 
 // Declare class to handle reverb's presets
 class ReverbPresets {
-	friend class MisEfx;
+	friend class FoxVerb;
 private:
 	// Reverb User Parameters
 	float rev_wet, rev_smearing, rev_decay, rev_damping, rev_lpfFreq, rev_hpfFreq, rev_preDelay, rev_modRate, rev_modDepth, rev_spread;
@@ -54,7 +52,7 @@ private:
 };
 
 //-------------------------------------------------------------------------------------------------------
-class MisEfx : public AudioEffectX {
+class FoxVerb : public AudioEffectX {
 
 	// const parameters
 	const float MAX_LPF_FREQUENCY_LOG = log(MAX_LPF_FREQUENCY);
@@ -68,27 +66,10 @@ class MisEfx : public AudioEffectX {
 	// Reverb User Parameters
 	float rev_wet, rev_smearing, rev_decay, rev_damping, rev_lpfFreq, rev_hpfFreq, rev_preDelay, rev_modRate, rev_modDepth, rev_spread;
 
-	// Reverb Internal parameters
-	float wet1, wet2, dry;
+	// Freeverb
+	Freeverb* Reverb;
 
-	// pre-delay module
-	CombFilter* preDelayModule;
-
-	// Comb Filters
-	LPCombFilter* combFiltersL;
-	LPCombFilter* combFiltersR;
-
-	float combFilterDlymsRight[NUM_COMB_FILTERS], combFilterDlymsLeft[NUM_COMB_FILTERS];
-
-	// All pass filters
-	AllPassFilter* apFiltersL_input;
-	AllPassFilter* apFiltersR_input;
-	AllPassFilter* apFiltersL_output;
-	AllPassFilter* apFiltersR_output;
-
-	float allPassDlymsRight_input[NUM_ALLPASS_FILTERS_IN], allPassDlymsLeft_input[NUM_ALLPASS_FILTERS_IN];
-	float allPassDlymsRight_output[NUM_ALLPASS_FILTERS_OUT], allPassDlymsLeft_output[NUM_ALLPASS_FILTERS_OUT];
-
+	// OscillatorType
 	OscillatorType modWaveform;
 
 	// LPF filter
@@ -106,16 +87,13 @@ class MisEfx : public AudioEffectX {
 	void InitPlugin();
 	float mapValueIntoRange(float value, float minvalue, float maxValue);
 	float mapValueOutsideRange(float value, float minValue, float maxValue);
-	void setCombFiltersDelay();
-	void setAllPassFiltersDelay();
 	void InitPresets();
-	void updateReverbParameters();
 
 public:
 
 
-	MisEfx(audioMasterCallback audioMaster);
-	~MisEfx();
+	FoxVerb(audioMasterCallback audioMaster);
+	~FoxVerb();
 
 	// Processing
 	virtual void processReplacing(float** inputs, float** outputs, VstInt32 sampleFrames) override;

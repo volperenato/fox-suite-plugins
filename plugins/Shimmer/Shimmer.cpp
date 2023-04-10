@@ -248,6 +248,10 @@ void Shimmer::processReplacing(float** inputs, float** outputs, VstInt32 sampleF
     float* outL = outputs[0]; // buffer output left
     float* outR = outputs[1]; // buffer output right
 
+    // write input to file
+    //string pre = "test_input.txt";
+    //WriteBufferToFile(inputs, sampleFrames, pre);
+    
     // Cycle over the sample frames number
     for (int i = 0; i < sampleFrames; i++) {
 
@@ -288,6 +292,11 @@ void Shimmer::processReplacing(float** inputs, float** outputs, VstInt32 sampleF
         outL[i] = _wet * mast_rev_out[0] + _dry * inL[i];
         outR[i] = _wet * mast_rev_out[1] + _dry * inR[i];
     }
+
+   // Write samples to file
+   //string post = "test_output.txt";
+   //WriteBufferToFile(outputs, sampleFrames, post);
+
 }
 /*--------------------------------------------------------------------*/
 
