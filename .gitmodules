@@ -1,0 +1,3 @@
+[submodule "fox-suite-core"]
+	path = fox-suite-core
+	url = https://github.com/volperenato/fox-suite-core
