@@ -119,7 +119,7 @@
       </SDLCheck>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>Default</ConformanceMode>
-      <AdditionalIncludeDirectories>..\..\fox-suite-blocks\include;..\..\vst-2.4-sdk\vstsdk2.4\pluginterfaces\vst2.x;..\..\vst-2.4-sdk\vstsdk2.4;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\fox-suite-core\include;..\..\vstsdk2.4\pluginterfaces\vst2.x;..\..\vstsdk2.4;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <Optimization>MinSpace</Optimization>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
@@ -153,19 +153,17 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\fox-suite-blocks\src\AllPassFilter.cpp" />
-    <ClCompile Include="..\..\fox-suite-blocks\src\CombFilter.cpp" />
-    <ClCompile Include="..\..\fox-suite-blocks\src\Delay.cpp" />
-    <ClCompile Include="..\..\fox-suite-blocks\src\Freeverb.cpp" />
-    <ClCompile Include="..\..\fox-suite-blocks\src\HPFButterworth.cpp" />
-    <ClCompile Include="..\..\fox-suite-blocks\src\LFO.cpp" />
-    <ClCompile Include="..\..\fox-suite-blocks\src\LPCombFilter.cpp" />
-    <ClCompile Include="..\..\fox-suite-blocks\src\LPFButterworth.cpp" />
-    <ClCompile Include="..\..\fox-suite-blocks\src\ModDelay.cpp" />
-    <ClCompile Include="..\..\fox-suite-blocks\src\Tremolo.cpp" />
-    <ClCompile Include="..\..\vst-2.4-sdk\vstsdk2.4\public.sdk\source\vst2.x\audioeffect.cpp" />
-    <ClCompile Include="..\..\vst-2.4-sdk\vstsdk2.4\public.sdk\source\vst2.x\audioeffectx.cpp" />
-    <ClCompile Include="..\..\vst-2.4-sdk\vstsdk2.4\public.sdk\source\vst2.x\vstplugmain.cpp" />
+    <ClCompile Include="..\..\fox-suite-core\src\AllPassFilter.cpp" />
+    <ClCompile Include="..\..\fox-suite-core\src\CombFilter.cpp" />
+    <ClCompile Include="..\..\fox-suite-core\src\Delay.cpp" />
+    <ClCompile Include="..\..\fox-suite-core\src\Freeverb.cpp" />
+    <ClCompile Include="..\..\fox-suite-core\src\HPFButterworth.cpp" />
+    <ClCompile Include="..\..\fox-suite-core\src\LPCombFilter.cpp" />
+    <ClCompile Include="..\..\fox-suite-core\src\LPFButterworth.cpp" />
+    <ClCompile Include="..\..\fox-suite-core\src\Tremolo.cpp" />
+    <ClCompile Include="..\..\vstsdk2.4\public.sdk\source\vst2.x\audioeffect.cpp" />
+    <ClCompile Include="..\..\vstsdk2.4\public.sdk\source\vst2.x\audioeffectx.cpp" />
+    <ClCompile Include="..\..\vstsdk2.4\public.sdk\source\vst2.x\vstplugmain.cpp" />
     <ClCompile Include="FoxVerb.cpp" />
   </ItemGroup>
   <ItemGroup>

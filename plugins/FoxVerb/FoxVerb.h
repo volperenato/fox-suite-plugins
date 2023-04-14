@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdio.h>
 #include "HPFButterworth.h"
+#include "LPFButterworth.h"
 #include "Tremolo.h"
 #include "Freeverb.h"
 #include "../vstsdk2.4/public.sdk/source/vst2.x/audioeffectx.h"

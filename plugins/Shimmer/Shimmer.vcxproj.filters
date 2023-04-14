@@ -21,32 +21,32 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\fox-suite-blocks\src\CombFilter.cpp">
-      <Filter>fox-blocks</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\fox-suite-blocks\src\Delay.cpp">
-      <Filter>fox-blocks</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\fox-suite-blocks\src\LPCombFilter.cpp">
-      <Filter>fox-blocks</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\vst-2.4-sdk\vstsdk2.4\public.sdk\source\vst2.x\audioeffect.cpp">
-      <Filter>vst</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\vst-2.4-sdk\vstsdk2.4\public.sdk\source\vst2.x\audioeffectx.cpp">
-      <Filter>vst</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\vst-2.4-sdk\vstsdk2.4\public.sdk\source\vst2.x\vstplugmain.cpp">
-      <Filter>vst</Filter>
-    </ClCompile>
     <ClCompile Include="Shimmer.cpp">
       <Filter>File di origine</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\fox-suite-blocks\src\PitchShifter.cpp">
+    <ClCompile Include="..\..\fox-suite-core\src\CombFilter.cpp">
       <Filter>fox-blocks</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\fox-suite-blocks\src\PSMVocoder.cpp">
+    <ClCompile Include="..\..\fox-suite-core\src\Delay.cpp">
       <Filter>fox-blocks</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\fox-suite-core\src\LPCombFilter.cpp">
+      <Filter>fox-blocks</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\fox-suite-core\src\PitchShifter.cpp">
+      <Filter>fox-blocks</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\fox-suite-core\src\PSMVocoder.cpp">
+      <Filter>fox-blocks</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vstsdk2.4\public.sdk\source\vst2.x\audioeffect.cpp">
+      <Filter>vst</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vstsdk2.4\public.sdk\source\vst2.x\audioeffectx.cpp">
+      <Filter>vst</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vstsdk2.4\public.sdk\source\vst2.x\vstplugmain.cpp">
+      <Filter>vst</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

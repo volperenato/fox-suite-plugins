@@ -8,8 +8,7 @@
 #pragma once
 #include <stdio.h>
 #include "FDN.h"
-#include "PitchShifter.h"
-#include "../vstsdk2.4/public.sdk/source/vst2.x/audioeffectx.h"
+#include "audioeffectx.h"
 #include <math.h>
 #include "PSMVocoder.h"
 
