@@ -257,8 +257,8 @@ void Shimmer::processReplacing(float** inputs, float** outputs, VstInt32 sampleF
 
         // Create tmp arrays for processing
         float pitch_input[2] = {inL[i], inR[i]};
-        float pitch_output_1oct[2] = { 0.0, 0.0 };
-        float pitch_output_2oct[2] = { 0.0, 0.0 };        
+        float pitch_output_1oct[2] = { inL[i], inR[i] };
+        float pitch_output_2oct[2] = { inL[i], inR[i] };
         float pitch_summed_output[2] = { pitch_input[0], pitch_input[1] };
         float bran_rev_out[2] = { 0.0, 0.0 };
         float mast_rev_out[2] = { 0.0, 0.0 };
@@ -266,12 +266,12 @@ void Shimmer::processReplacing(float** inputs, float** outputs, VstInt32 sampleF
 
         // --- Pitch Shifting        
         // Process pitch shifting 1 octave
-        pitch_output_1oct[0] = PitchShift_1octL->processAudioSample(pitch_input[0]);
-        pitch_output_1oct[1] = PitchShift_1octR->processAudioSample(pitch_input[1]);
+        //pitch_output_1oct[0] = PitchShift_1octL->processAudioSample(pitch_input[0]);
+        //pitch_output_1oct[1] = PitchShift_1octR->processAudioSample(pitch_input[1]);
 
         // Process pitch shifting 2 octaves
-        pitch_output_2oct[0] = PitchShift_2octL->processAudioSample(pitch_input[0]);
-        pitch_output_2oct[1] = PitchShift_2octR->processAudioSample(pitch_input[1]);
+        //pitch_output_2oct[0] = PitchShift_2octL->processAudioSample(pitch_input[0]);
+        //pitch_output_2oct[1] = PitchShift_2octR->processAudioSample(pitch_input[1]);
 
         // Sum outputs
         pitch_summed_output[0] = _mixP1 * pitch_output_1oct[0] + _mixP2 * pitch_output_2oct[0];
