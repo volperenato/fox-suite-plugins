@@ -18,12 +18,13 @@
 
 /*--------------------------------------------------------------------*/
 // FDN constants
-#define DEFAULT_NUMBER_OF_INTERNAL_CHANNELS_FDN	16
+#define DEFAULT_NUMBER_OF_INTERNAL_CHANNELS_FDN	8
 #define DIFFUSER_DELAY_BUFFER_SIZE_MS 2000.0
 #define FEEDBACK_DELAY_BUFFER_SIZE_MS 2000.0
 #define MAX_REVERB_DECAY_IN_SECONDS 30.0
 #define MIN_FEEDBACK_DELAY_LENGTH 100.0
-#define NUMBER_OF_DIFFUSION_STEPS 5
+#define NUMBER_OF_DIFFUSION_STEPS 4
+#define NUMBER_OF_MOD_DIFFUSION_STEPS 1
 #define EARLYREFL_DELAY_DISTRIBUTION DelayDistribution::RandomInRange
 #define DIFFUSER_DELAY_DISTRIBUTION DelayDistribution::RandomInRange
 #define FEEDBACK_DELAY_DISTRIBUTION DelayDistribution::RandomInRange
@@ -116,7 +117,7 @@ void Shimmer::InitPlugin()
 
     /*.......................................*/
     // Create FDN Branch Reverb
-    BranchReverb = new FDN(2, DEFAULT_NUMBER_OF_INTERNAL_CHANNELS_FDN, 2, NUMBER_OF_DIFFUSION_STEPS, 1);
+    BranchReverb = new FDN(2, DEFAULT_NUMBER_OF_INTERNAL_CHANNELS_FDN, 2, NUMBER_OF_DIFFUSION_STEPS, NUMBER_OF_MOD_DIFFUSION_STEPS);
 
     // Initialize objects (allocate delay lines)
     BranchReverb->initialize(DIFFUSER_DELAY_BUFFER_SIZE_MS, FEEDBACK_DELAY_BUFFER_SIZE_MS, sampleRate);
@@ -150,7 +151,7 @@ void Shimmer::InitPlugin()
 
     /*.......................................*/
     // Create FDN Master Reverb
-    MasterReverb = new FDN(2, DEFAULT_NUMBER_OF_INTERNAL_CHANNELS_FDN, 2, NUMBER_OF_DIFFUSION_STEPS, 1);
+    MasterReverb = new FDN(2, DEFAULT_NUMBER_OF_INTERNAL_CHANNELS_FDN, 2, NUMBER_OF_DIFFUSION_STEPS, NUMBER_OF_MOD_DIFFUSION_STEPS);
 
     // Initialize objects (allocate delay lines)
     MasterReverb->initialize(DIFFUSER_DELAY_BUFFER_SIZE_MS, FEEDBACK_DELAY_BUFFER_SIZE_MS, sampleRate);
@@ -264,27 +265,32 @@ void Shimmer::processReplacing(float** inputs, float** outputs, VstInt32 sampleF
         float mast_rev_out[2] = { 0.0, 0.0 };
         float mast_rev_in[2];
 
-        // --- Pitch Shifting        
-        // Process pitch shifting 1 octave
-        //pitch_output_1oct[0] = PitchShift_1octL->processAudioSample(pitch_input[0]);
-        //pitch_output_1oct[1] = PitchShift_1octR->processAudioSample(pitch_input[1]);
+        if (false) {
+            // --- Pitch Shifting        
+            // Process pitch shifting 1 octave
+            pitch_output_1oct[0] = PitchShift_1octL->processAudioSample(pitch_input[0]);
+            pitch_output_1oct[1] = PitchShift_1octR->processAudioSample(pitch_input[1]);
 
-        // Process pitch shifting 2 octaves
-        //pitch_output_2oct[0] = PitchShift_2octL->processAudioSample(pitch_input[0]);
-        //pitch_output_2oct[1] = PitchShift_2octR->processAudioSample(pitch_input[1]);
+            // Process pitch shifting 2 octaves
+            pitch_output_2oct[0] = PitchShift_2octL->processAudioSample(pitch_input[0]);
+            pitch_output_2oct[1] = PitchShift_2octR->processAudioSample(pitch_input[1]);
 
-        // Sum outputs
-        pitch_summed_output[0] = _mixP1 * pitch_output_1oct[0] + _mixP2 * pitch_output_2oct[0];
-        pitch_summed_output[1] = _mixP1 * pitch_output_1oct[1] + _mixP2 * pitch_output_2oct[1];
-              
-        // --- Branch Reverb        
-        BranchReverb->processAudio(pitch_summed_output, bran_rev_out);
+            // Sum outputs
+            pitch_summed_output[0] = _mixP1 * pitch_output_1oct[0] + _mixP2 * pitch_output_2oct[0];
+            pitch_summed_output[1] = _mixP1 * pitch_output_1oct[1] + _mixP2 * pitch_output_2oct[1];
 
-        // --- Master Reverb        
-        // Mix branch reverb output with dry input
-        mast_rev_in[0] = shim_shimmer * bran_rev_out[0] + (1 - shim_shimmer) * inL[i];
-        mast_rev_in[1] = shim_shimmer * bran_rev_out[1] + (1 - shim_shimmer) * inR[i];
+            // --- Branch Reverb        
+            BranchReverb->processAudio(pitch_summed_output, bran_rev_out);
 
+            // --- Master Reverb        
+            // Mix branch reverb output with dry input
+            mast_rev_in[0] = shim_shimmer * bran_rev_out[0] + (1 - shim_shimmer) * inL[i];
+            mast_rev_in[1] = shim_shimmer * bran_rev_out[1] + (1 - shim_shimmer) * inR[i];
+        }
+        else {
+            mast_rev_in[0] = inL[i];
+            mast_rev_in[1] = inR[i];
+        }
         // Process master reverb        
         MasterReverb->processAudio(mast_rev_in, mast_rev_out);        
 
